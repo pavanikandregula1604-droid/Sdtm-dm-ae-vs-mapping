@@ -1,2 +1,2 @@
-# Sdtm-dm-ae-lb-mapping
-SDTM DM , AE and LB domain creation using SAS on dummy data.
+# Sdtm-dm-ae-vs-mapping
+SDTM DM , AE and VS domain creation using SAS on dummy data.
