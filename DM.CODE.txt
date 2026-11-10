@@ -1,0 +1,142 @@
+/*--------------------------------------------------*
+
+Study Number     : 
+Study            : 
+Program Name     : DM
+Purpose          : Creating Demographic Domain
+Author           : xxxxxxx
+Date of Creation : DDMMM2026
+Input Data       : RAW.DM, AE, VS
+Output           : SDTM.DM
+Assumptions      : Taken from xxx
+--------------------------------------------------------------------------
+Modification History :
+--------------------------------------------------------------------------
+Modified By              : xxxx
+Modification Date        : 
+Modification Description : 
+---------------------------------------------------------------------------*/
+
+DM 'LOG' CLEAR;
+
+PROC DATASETS LIB=WORK MEMTYPE=DATA KILL;
+
+OPTIONS VALIDVARNAME= UPCASE;
+
+/* to bring raw datasets*/
+
+libname abc "C:\Users\User\OneDrive\Desktop\New folder\RAW_DATA";
+
+/* to store final output datsets*/
+
+libname ghf "C:\Users\User\OneDrive\Desktop\New folder\RAW_DATA";
+
+/* final variables*/
+
+%let keepvar= studyid domain siteid subjid usubjid rfstdtc rfxstdtc rfendtc rfxendtc rficdtc 
+			age ageu sex race ethnic brthdtc arm armcd actarm actarmcd;
+
+/* format creation*/
+
+proc format ;
+	value $sex_
+	'Female'='F'
+	'Male'='M'
+	;
+
+	value $race_
+	'white'='WHITE'
+;
+	value $ethnic_
+		"Hispanic" = "HISPANIC OR LATINO"
+	"Not Hispanic" = "NOT HISPANIC OR LATINO"
+	;
+run;
+
+data dm1 
+(rename = (siteid_=siteid  subjid_=subjid));
+set abc.dm;
+STUDYID= 'ABC-101';
+DOMAIN='DM';
+USUBJID= CATX('-',STUDYID,SITEID,SUBJID);
+SUBJID_= put(SUBJID, $4.) ;
+RFSTDTC= PUT (FIRSTDOSEDT, IS8601DA.);
+RFENDTC=PUT (LASTDOSEDT, IS8601DA.);
+RFXSTDTC= PUT (FIRSTDOSEDT, IS8601DA.);
+RFXENDTC= PUT (LASTDOSEDT, IS8601DA.);
+SITEID_= put (SITEID, $Z2.);
+RFICDTC= PUT (ICDT, IS8601DA.);
+BRTHDTC= PUT (BRTHDT, IS8601DA.);
+
+sex=put(sex,$sex_.);
+race=put (race, $race_.);
+ethnic=put (ethnic, $ethnic_.);
+
+age= FLOOR (year (ICDT) - year (brthdt));
+ 
+if age ne . then ageu = 'YEARS';
+ELSE ageu =' ';
+
+
+ARM= TRT;
+if trt= 'XYZ-123 10 mg' THEN ARMCD='XYZ10';
+	ELSE ARMCD='PBO';
+ACTARM=TRT;
+ACTARMCD=ARMCD;
+
+
+
+KEEP STUDYID DOMAIN USUBJID SUBJID_ RFSTDTC RFENDTC RFXSTDTC RFXENDTC
+SITEID_ RFICDTC BRTHDTC ARM ARMCD ACTARM ACTARMCD sex race ethnic age AGEU
+;
+	
+
+RUN;
+
+
+
+/* final dataset with attribs*/
+
+data fin (label ='demographics');
+
+attrib STUDYID label = 'studyidentifier' length = $14
+	    DOMAIN label ='Domain Abbreviation'  length = $2
+		USUBJID label ='Unique Subject Identifier'  length = $30
+		SUBJID label ='Subject Identifier for the Study'  length = $10
+		RFSTDTC label ='Subject Reference Start Date/Time'  length = $20
+		RFENDTC label ='Subject Reference End Date/Time'  length = $20
+		RFXSTDTC label ='Date/Time of First Study Treatment '  length = $20
+		RFXENDTC label ='Date/Time of Last Study Treatment'  length = $20
+		RFICDTC label ='Date/Time of Informed Consent'  length = $20
+		SITEID label ='Study Site Identifier'  length = $4
+		BRTHDTC label ='Date/Time of Birth'  length = $20
+		AGE label ='Age '  length = 8
+		AGEU label ='Age Units'  length = $6
+		SEX label ='Sex'  length = $1
+		RACE label ='Race'  length = $100
+		ETHNIC label ='Ethnicity'  length = $40
+		ARMCD label ='Planned Arm Code'  length = $8
+		ARM label ='Description of Planned Arm'  length = $50
+		ACTARMCD label ='Actual Arm Code'  length = $8
+		ACTARM label ='Description of Actual Arm'  length = $50;
+		
+	retain ;
+	keep &keepvar.;
+
+	set dm1;
+run;
+
+
+
+DATA DM1;
+	SET FIN;
+	RUN;
+
+
+LIBNAME XPTfile xport "C:\Users\User\OneDrive\Desktop\New folder\xpt\dm1.xpt";
+
+proc copy in=work out=xptfile;
+select dm1;
+run;
+
+
